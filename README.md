@@ -6,10 +6,10 @@ With the increasing demand for automated solutions in everyday life, our team de
 ## Project Capabilities
 The following details the current capabilities of the automatic watering system:
 
-*Detect wetness level of anything in contact with the sensor.
-*If the level is below a given threshold dispense water for a period of time.
-*Recheck the level, and if it is above the threshold stop dispensing until it crosses the threshold again.
+* Detect wetness level of anything in contact with the sensor.
+* If the level is below a given threshold dispense water for a period of time.
+* Recheck the level, and if it is above the threshold stop dispensing until it crosses the threshold again.
 
 ## Who Are We?
-*Alexander (Alex) Stewart - Freshman Maintenance Enginnering Technlogy Major
-*John Bryson - Freshman Electrical Engineering Major
+* Alexander (Alex) Stewart - Freshman Maintenance Enginnering Technlogy Major
+* John Bryson - Freshman Electrical Engineering Major
