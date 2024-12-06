@@ -1,74 +1,41 @@
-# Headless Bare-Bones version of sploosh. No screen, no dials, uses battery
-# List of pins
-#
-# ADC: 26 (for moisuture reading)
-# Relaypin: 15
-# LED: 25 (onboard)
- 
-from machine import Pin,I2C,ADC
+# For this script, we utilize the Raspberry Pi Pico Kit that you are given along with the capacitive soil moisture probe which should be connected as follows:
+# V_cc to the 3.3 Volt or 5 Volt pin on the Pico Breadboard
+# GND to the GND pin on the Pico Breadboard
+# AOUT to the GPIO 26 pin on the Pico Breadboard (This is one of the ADC pins)
+
+# How does this code work? Well, first we declare our libraries, then we delare what is hooked up to the Raspberry Pi Pico and to which pins they are connected, and finally we then ask the Pi Pico to show us the values of the probe as a percentage (FOREVER) .... (while True:)
+from machine import ADC, Pin
 import utime
-import gc
 
-# The Tweakable values that will help tune for our use case
-calibratewet=20000 # ADC value for a very wet thing
-calibratedry=50000 # ADC value for a very dry thing
-checkin = 5 # Time interval (seconds) for each cycle of monitoring loop
-# PID Parameters
-# Description Stolen From Reddit: In terms of steering a ship:
-# Kp is steering harder the further off course you are,
-# Ki is steering into the wind to targetact a drift
-# Kd is slowing the turn as you approach your course
-Kp=2   # Proportional term - Basic steering (This is the first parameter you should tune for a particular setup)
-Ki=0   # Integral term - Compensate for heat loss by vessel
-Kd=0  # Derivative term - to prevent overshoot due to inertia - if it is zooming towards setpoint this
-      # will cancel out the proportional term due to the large negative gradient
-target=6 # Target Wetness For Plant
+# What pins are hooked up to the joystick?
+# This is saying that we have connected the data pin of the sensor to the GPIO 26 pin (which is one of the ADC pins!)
+soil_probe = ADC(Pin(27))
+digital_pin = Pin(13, Pin.OUT)
 
-# Initialise Pins
-led=Pin(25,Pin.OUT) # Blink onboard LED as proof-of-life
-relaypin = Pin(15, mode = Pin.OUT)
-wetness = machine.ADC(26)
-# Blink LED as proof of life
-led.value(1) 
-utime.sleep(.2) 
-led.value(0)
-# Initialise 
-gc.enable() # Garbage collection enabled
-integral = 0
-lastupdate = utime.time()  
-lasterror = 0
-output=0
-offstate=True
-# PID infinite loop 
-while True:
-    try:
-        # Get wetness
-        imwet=wetness.read_u16()
-        howdry = min(10,max(0,10*(imwet-calibratedry)/(calibratewet-calibratedry))) # linear relationship between ADC and wetness, clamped between 0, 10
-        now = utime.time()
-        dt= now-lastupdate
-        if  offstate == False and dt > checkin * round(output)/100 :
-            relaypin = Pin(15, mode = Pin.OUT, value =0 )
-            offstate= True
-            utime.sleep(.1)
-        if dt > checkin:
-            print("WETNESS",howdry)
-            error=target-howdry
-            integral = integral + dt * error
-            derivative = (error - lasterror)/dt
-            output = Kp * error + Ki * integral + Kd * derivative
-            print(str(output)+"= Kp term: "+str(Kp*error)+" + Ki term:" + str(Ki*integral) + "+ Kd term: " + str(Kd*derivative))
-            output = max(min(100, output), 0) # Clamp output between 0 and 100
-            print("OUTPUT ",output)
-            if output>0:  
-                relaypin.value(1)
-                offstate = False
-            else:
-                relaypin.value(0)
-                offstate = True
-            utime.sleep(.1)
-            lastupdate = now
-            lasterror = error  
-    except Exception as e:
-        print('error encountered:'+str(e))
-        utime.sleep(checkin)
+# Before we can show the moisture as a percentage, need to first get the minimum moisture value (when the probe is not in water) and the maximum moisture value (when the probe is in water)
+max_moisture = 27574
+min_moisture = 57100
+
+# This function will fit the moisture level of the sensor to a line equation from ~0% to ~100% using the min and max moisture value measured with the sensor 
+def get_moisture_percentage(moisture_level):
+    point_1_x = min_moisture
+    point_2_x = max_moisture
+    point_1_y = 0
+    point_2_y = 100
+    m = ((point_2_y - point_1_y) / (point_2_x - point_1_x))
+    return int((m*moisture_level) - (m*min_moisture) + point_1_y)
+
+# Now, forever (while True:), read the value from the moisture sensor, convert it to a percentage, and display in the shell for users to see
+while True: 
+    moisture_level = soil_probe.read_u16()
+    
+    # This will fit the data from the soil moisture probe to a line equation between ~0% moisture and ~100% moisture
+    moisture_level_percentage = get_moisture_percentage(moisture_level)
+    
+    print(moisture_level_percentage)
+    if (moisture_level_percentage <30):
+        digital_pin.value(1)
+    if (moisture_level_percentage >30):
+        digital_pin.value(0)
+
+utime.sleep(.8)
